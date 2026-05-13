@@ -75,7 +75,8 @@ def create_rental(rental: RentalCreate):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         INSERT INTO [{SCHEMA_NAME}].[{TABLE_NAME}]
         (
             user_id,
@@ -88,23 +89,21 @@ def create_rental(rental: RentalCreate):
         OUTPUT INSERTED.id
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (
-            rental.user_id,
-            rental.item_id,
-            rental.start_date,
-            rental.end_date,
-            rental.status,
-            rental.total_price
-        ))
+            (
+                rental.user_id,
+                rental.item_id,
+                rental.start_date,
+                rental.end_date,
+                rental.status,
+                rental.total_price,
+            ),
+        )
 
         inserted_id = cursor.fetchone()[0]
 
         conn.commit()
 
-        return {
-            "message": "Rental created successfully",
-            "id": inserted_id
-        }
+        return {"message": "Rental created successfully", "id": inserted_id}
 
     except Exception as e:
         conn.rollback()
@@ -114,6 +113,7 @@ def create_rental(rental: RentalCreate):
         cursor.close()
         conn.close()
 
+
 # GET /rentals/{id}
 @app.get("/rentals/{id}")
 def get_rental(id: int):
@@ -121,11 +121,14 @@ def get_rental(id: int):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         SELECT *
         FROM [{SCHEMA_NAME}].[{TABLE_NAME}]
         WHERE id = ?
-        """, (id,))
+        """,
+            (id,),
+        )
 
         row = cursor.fetchone()
 
@@ -148,20 +151,20 @@ def get_user_rentals(user_id: int):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         SELECT *
         FROM [{SCHEMA_NAME}].[{TABLE_NAME}]
         WHERE user_id = ?
-        """, (user_id,))
+        """,
+            (user_id,),
+        )
 
         rows = cursor.fetchall()
 
         columns = [column[0] for column in cursor.description]
 
-        return [
-            dict(zip(columns, row))
-            for row in rows
-        ]
+        return [dict(zip(columns, row)) for row in rows]
 
     finally:
         cursor.close()
@@ -176,11 +179,14 @@ def update_rental(id: int, rental: RentalUpdate):
 
     try:
         # Check if exists
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         SELECT id
         FROM [{SCHEMA_NAME}].[{TABLE_NAME}]
         WHERE id = ?
-        """, (id,))
+        """,
+            (id,),
+        )
 
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Rental not found")
@@ -227,10 +233,13 @@ def delete_rental(id: int):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         DELETE FROM [{SCHEMA_NAME}].[{TABLE_NAME}]
         WHERE id = ?
-        """, (id,))
+        """,
+            (id,),
+        )
 
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Rental not found")
@@ -255,11 +264,14 @@ def calculate_rental_price(id: int):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         SELECT start_date, end_date
         FROM [{SCHEMA_NAME}].[{TABLE_NAME}]
         WHERE id = ?
-        """, (id,))
+        """,
+            (id,),
+        )
 
         row = cursor.fetchone()
 
@@ -275,18 +287,21 @@ def calculate_rental_price(id: int):
 
         calculated_price = rental_days * daily_rate
 
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
         UPDATE [{SCHEMA_NAME}].[{TABLE_NAME}]
         SET total_price = ?
         WHERE id = ?
-        """, (calculated_price, id))
+        """,
+            (calculated_price, id),
+        )
 
         conn.commit()
 
         return {
             "rental_days": rental_days,
             "daily_rate": daily_rate,
-            "calculated_price": calculated_price
+            "calculated_price": calculated_price,
         }
 
     except Exception as e:

@@ -13,6 +13,7 @@ client = TestClient(app)
 # Helpers
 # -----------------------------------
 
+
 def create_mock_connection():
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
@@ -26,18 +27,18 @@ def create_mock_connection():
 # Health Check
 # -----------------------------------
 
+
 def test_health_check():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Rental API is running"
-    }
+    assert response.json() == {"message": "Rental API is running"}
 
 
 # -----------------------------------
 # Create Rental
 # -----------------------------------
+
 
 @patch("app.get_connection")
 def test_create_rental_success(mock_get_connection):
@@ -54,17 +55,14 @@ def test_create_rental_success(mock_get_connection):
         "start_date": "2026-05-01",
         "end_date": "2026-05-05",
         "status": "active",
-        "total_price": 100
+        "total_price": 100,
     }
 
     response = client.post("/rentals", json=payload)
 
     assert response.status_code == 200
 
-    assert response.json() == {
-        "message": "Rental created successfully",
-        "id": 1
-    }
+    assert response.json() == {"message": "Rental created successfully", "id": 1}
 
     mock_conn.commit.assert_called_once()
 
@@ -72,6 +70,7 @@ def test_create_rental_success(mock_get_connection):
 # -----------------------------------
 # Get Rental
 # -----------------------------------
+
 
 @patch("app.get_connection")
 def test_get_rental_success(mock_get_connection):
@@ -85,7 +84,7 @@ def test_get_rental_success(mock_get_connection):
         date(2026, 5, 1),
         date(2026, 5, 5),
         "active",
-        100
+        100,
     )
 
     mock_cursor.description = [
@@ -95,7 +94,7 @@ def test_get_rental_success(mock_get_connection):
         ("start_date",),
         ("end_date",),
         ("status",),
-        ("total_price",)
+        ("total_price",),
     ]
 
     mock_get_connection.return_value = mock_conn
@@ -130,21 +129,14 @@ def test_get_rental_not_found(mock_get_connection):
 # Get User Rentals
 # -----------------------------------
 
+
 @patch("app.get_connection")
 def test_get_user_rentals(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
 
     mock_cursor.fetchall.return_value = [
-        (
-            1,
-            1,
-            10,
-            date(2026, 5, 1),
-            date(2026, 5, 5),
-            "active",
-            100
-        )
+        (1, 1, 10, date(2026, 5, 1), date(2026, 5, 5), "active", 100)
     ]
 
     mock_cursor.description = [
@@ -154,7 +146,7 @@ def test_get_user_rentals(mock_get_connection):
         ("start_date",),
         ("end_date",),
         ("status",),
-        ("total_price",)
+        ("total_price",),
     ]
 
     mock_get_connection.return_value = mock_conn
@@ -173,6 +165,7 @@ def test_get_user_rentals(mock_get_connection):
 # Update Rental
 # -----------------------------------
 
+
 @patch("app.get_connection")
 def test_update_rental_success(mock_get_connection):
 
@@ -183,17 +176,13 @@ def test_update_rental_success(mock_get_connection):
 
     mock_get_connection.return_value = mock_conn
 
-    payload = {
-        "status": "completed"
-    }
+    payload = {"status": "completed"}
 
     response = client.put("/rentals/1", json=payload)
 
     assert response.status_code == 200
 
-    assert response.json() == {
-        "message": "Rental updated successfully"
-    }
+    assert response.json() == {"message": "Rental updated successfully"}
 
     mock_conn.commit.assert_called_once()
 
@@ -207,9 +196,7 @@ def test_update_rental_not_found(mock_get_connection):
 
     mock_get_connection.return_value = mock_conn
 
-    payload = {
-        "status": "completed"
-    }
+    payload = {"status": "completed"}
 
     response = client.put("/rentals/999", json=payload)
 
@@ -236,6 +223,7 @@ def test_update_rental_no_fields(mock_get_connection):
 # Delete Rental
 # -----------------------------------
 
+
 @patch("app.get_connection")
 def test_delete_rental_success(mock_get_connection):
 
@@ -249,9 +237,7 @@ def test_delete_rental_success(mock_get_connection):
 
     assert response.status_code == 200
 
-    assert response.json() == {
-        "message": "Rental deleted successfully"
-    }
+    assert response.json() == {"message": "Rental deleted successfully"}
 
     mock_conn.commit.assert_called_once()
 
@@ -275,15 +261,13 @@ def test_delete_rental_not_found(mock_get_connection):
 # Calculate Rental Price
 # -----------------------------------
 
+
 @patch("app.get_connection")
 def test_calculate_rental_price_success(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
 
-    mock_cursor.fetchone.return_value = (
-        date(2026, 5, 1),
-        date(2026, 5, 6)
-    )
+    mock_cursor.fetchone.return_value = (date(2026, 5, 1), date(2026, 5, 6))
 
     mock_get_connection.return_value = mock_conn
 
