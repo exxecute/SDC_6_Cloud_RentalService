@@ -1,19 +1,62 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+stages:
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+# -------------------------
+# STAGE 1: LINT (FLAKE8)
+# -------------------------
+- stage: Lint
+  displayName: "Flake8 Linting"
+  jobs:
+  - job: flake8
+    displayName: "Run flake8"
+    steps:
+
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.12'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install flake8
+      displayName: "Install flake8"
+
+    - script: |
+        flake8 .
+      displayName: "Run flake8"
+
+
+# -------------------------
+# STAGE 2: TESTS (PYTEST)
+# -------------------------
+- stage: Tests
+  displayName: "Run Pytest Tests"
+  dependsOn: Lint
+  jobs:
+  - job: pytest
+    displayName: "Run pytest"
+    steps:
+
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.12'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest httpx
+      displayName: "Install dependencies"
+
+    - script: |
+        python -m pytest -v --junitxml=test-results.xml
+      displayName: "Run tests"
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFiles: "**/test-results.xml"
+        testRunTitle: "Pytest Results"
+      condition: succeededOrFailed()
