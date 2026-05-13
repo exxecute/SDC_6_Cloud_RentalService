@@ -1,20 +1,28 @@
 from fastapi import FastAPI, HTTPException
 from database import get_connection
 from models import RentalCreate, RentalUpdate
+import requests
+from fastapi import HTTPException
+from logging_config import get_logger
 
+logger = get_logger("rental-service")
 app = FastAPI()
 
 SCHEMA_NAME = "UladzislauMikhayevich"
 TABLE_NAME = "rentals"
+SUPPLY_SERVICE_URL = "http://supply-service:8000"
+ALERT_SERVICE_URL = "http://alert-service:8000"
 
 
 @app.get("/")
 def health_check():
+    logger.info("Health check called")
     return {"message": "Rental API is running"}
 
 
 @app.get("/setup")
 def setup_database():
+    logger.info(f"Setup database")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -73,6 +81,7 @@ def setup_database():
 
 @app.post("/rentals")
 def create_rental(rental: RentalCreate):
+    logger.info(f"Creating rental user_id={rental.user_id}, item_id={rental.item_id}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -104,6 +113,7 @@ def create_rental(rental: RentalCreate):
         inserted_id = cursor.fetchone()[0]
         conn.commit()
 
+        logger.info(f"Rental created with id={inserted_id}")
         return {
             "message": "Rental created successfully",
             "id": inserted_id,
@@ -120,6 +130,7 @@ def create_rental(rental: RentalCreate):
 
 @app.get("/rentals/{id}")
 def get_rental(id: int):
+    logger.info(f"Get rental with id={id}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -150,6 +161,7 @@ def get_rental(id: int):
 
 @app.get("/rentals/user/{user_id}")
 def get_user_rentals(user_id: int):
+    logger.info(f"Get user rentals with id={id}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -175,6 +187,7 @@ def get_user_rentals(user_id: int):
 
 @app.put("/rentals/{id}")
 def update_rental(id: int, rental: RentalUpdate):
+    logger.info(f"Put rental with id={id}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -229,6 +242,7 @@ def update_rental(id: int, rental: RentalUpdate):
 
 @app.delete("/rentals/{id}")
 def delete_rental(id: int):
+    logger.info(f"Delete rental with id={id}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -260,6 +274,7 @@ def delete_rental(id: int):
 
 @app.post("/rentals/{id}/calculate")
 def calculate_rental_price(id: int):
+    logger.info(f"Calculate rental with id={id}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -306,6 +321,112 @@ def calculate_rental_price(id: int):
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.post("/rentals/full")
+def create_full_rental(rental: RentalCreate):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+
+        # 1. Create rental
+        cursor.execute(
+            f"""
+            INSERT INTO [{SCHEMA_NAME}].[{TABLE_NAME}]
+            (
+                user_id,
+                item_id,
+                start_date,
+                end_date,
+                status,
+                total_price
+            )
+            OUTPUT INSERTED.id
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                rental.user_id,
+                rental.item_id,
+                rental.start_date,
+                rental.end_date,
+                "pending",
+                rental.total_price,
+            ),
+        )
+
+        rental_id = cursor.fetchone()[0]
+
+        conn.commit()
+
+        # 2. Reserve item in supply-service
+        reserve_response = requests.post(
+            f"{SUPPLY_SERVICE_URL}/items/{rental.item_id}/reserve",
+            json={
+                "rental_id": rental_id,
+                "reserved_count": 1,
+            },
+        )
+
+        if reserve_response.status_code != 200:
+
+            cursor.execute(
+                f"""
+                UPDATE [{SCHEMA_NAME}].[{TABLE_NAME}]
+                SET status = 'rejected'
+                WHERE id = ?
+                """,
+                (rental_id,),
+            )
+
+            conn.commit()
+
+            raise HTTPException(
+                status_code=400,
+                detail="Item reservation failed",
+            )
+
+        # 3. Update rental status
+        cursor.execute(
+            f"""
+            UPDATE [{SCHEMA_NAME}].[{TABLE_NAME}]
+            SET status = 'approved'
+            WHERE id = ?
+            """,
+            (rental_id,),
+        )
+
+        conn.commit()
+
+        # 4. Create feedback request
+        requests.post(
+            f"{ALERT_SERVICE_URL}/feedback/request",
+            json={
+                "user_id": rental.user_id,
+                "item_id": rental.item_id,
+                "rating": 1,
+                "comment": "THX!!!!" 
+            },
+        )
+
+        return {
+            "message": "Rental completed successfully",
+            "rental_id": rental_id,
+        }
+
+    except Exception as e:
+
+        conn.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
 
     finally:
         cursor.close()
