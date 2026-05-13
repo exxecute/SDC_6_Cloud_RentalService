@@ -1,8 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from database import get_connection
 from models import RentalCreate, RentalUpdate
-from datetime import datetime, date, timedelta
-import random
 
 app = FastAPI()
 
