@@ -5,15 +5,10 @@ pool:
   vmImage: 'ubuntu-latest'
 
 stages:
-
-# -------------------------
-# STAGE 1: LINT (FLAKE8)
-# -------------------------
 - stage: Lint
   displayName: "Flake8 Linting"
   jobs:
   - job: flake8
-    displayName: "Run flake8"
     steps:
 
     - task: UsePythonVersion@0
@@ -26,19 +21,13 @@ stages:
       displayName: "Install flake8"
 
     - script: |
-        flake8 .
+        python -m flake8 .
       displayName: "Run flake8"
 
-
-# -------------------------
-# STAGE 2: TESTS (PYTEST)
-# -------------------------
-- stage: Tests
-  displayName: "Run Pytest Tests"
-  dependsOn: Lint
+- stage: Test
+  displayName: "Run Tests"
   jobs:
   - job: pytest
-    displayName: "Run pytest"
     steps:
 
     - task: UsePythonVersion@0
@@ -52,11 +41,5 @@ stages:
       displayName: "Install dependencies"
 
     - script: |
-        python -m pytest -v --junitxml=test-results.xml
+        python -m pytest -v
       displayName: "Run tests"
-
-    - task: PublishTestResults@2
-      inputs:
-        testResultsFiles: "**/test-results.xml"
-        testRunTitle: "Pytest Results"
-      condition: succeededOrFailed()
