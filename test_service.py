@@ -1,5 +1,3 @@
-# tests/test_rentals.py
-
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from datetime import date
@@ -9,44 +7,27 @@ from app import app
 client = TestClient(app)
 
 
-# -----------------------------------
-# Helpers
-# -----------------------------------
-
-
 def create_mock_connection():
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
-
     mock_conn.cursor.return_value = mock_cursor
-
     return mock_conn, mock_cursor
-
-
-# -----------------------------------
-# Health Check
-# -----------------------------------
 
 
 def test_health_check():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {"message": "Rental API is running"}
-
-
-# -----------------------------------
-# Create Rental
-# -----------------------------------
+    assert response.json() == {
+        "message": "Rental API is running"
+    }
 
 
 @patch("app.get_connection")
 def test_create_rental_success(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.fetchone.return_value = [1]
-
     mock_get_connection.return_value = mock_conn
 
     payload = {
@@ -62,14 +43,12 @@ def test_create_rental_success(mock_get_connection):
 
     assert response.status_code == 200
 
-    assert response.json() == {"message": "Rental created successfully", "id": 1}
+    assert response.json() == {
+        "message": "Rental created successfully",
+        "id": 1,
+    }
 
     mock_conn.commit.assert_called_once()
-
-
-# -----------------------------------
-# Get Rental
-# -----------------------------------
 
 
 @patch("app.get_connection")
@@ -78,9 +57,7 @@ def test_get_rental_success(mock_get_connection):
     mock_conn, mock_cursor = create_mock_connection()
 
     mock_cursor.fetchone.return_value = (
-        1,
-        1,
-        10,
+        1, 1, 10,
         date(2026, 5, 1),
         date(2026, 5, 5),
         "active",
@@ -114,20 +91,13 @@ def test_get_rental_success(mock_get_connection):
 def test_get_rental_not_found(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.fetchone.return_value = None
-
     mock_get_connection.return_value = mock_conn
 
     response = client.get("/rentals/999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Rental not found"
-
-
-# -----------------------------------
-# Get User Rentals
-# -----------------------------------
 
 
 @patch("app.get_connection")
@@ -161,19 +131,11 @@ def test_get_user_rentals(mock_get_connection):
     assert data[0]["user_id"] == 1
 
 
-# -----------------------------------
-# Update Rental
-# -----------------------------------
-
-
 @patch("app.get_connection")
 def test_update_rental_success(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
-    # rental exists
     mock_cursor.fetchone.return_value = (1,)
-
     mock_get_connection.return_value = mock_conn
 
     payload = {"status": "completed"}
@@ -182,7 +144,9 @@ def test_update_rental_success(mock_get_connection):
 
     assert response.status_code == 200
 
-    assert response.json() == {"message": "Rental updated successfully"}
+    assert response.json() == {
+        "message": "Rental updated successfully"
+    }
 
     mock_conn.commit.assert_called_once()
 
@@ -191,16 +155,11 @@ def test_update_rental_success(mock_get_connection):
 def test_update_rental_not_found(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.fetchone.return_value = None
-
     mock_get_connection.return_value = mock_conn
 
-    payload = {"status": "completed"}
+    response = client.put("/rentals/999", json={"status": "completed"})
 
-    response = client.put("/rentals/999", json=payload)
-
-    # Your code converts HTTPException into 500
     assert response.status_code == 500
 
 
@@ -208,36 +167,28 @@ def test_update_rental_not_found(mock_get_connection):
 def test_update_rental_no_fields(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.fetchone.return_value = (1,)
-
     mock_get_connection.return_value = mock_conn
 
     response = client.put("/rentals/1", json={})
 
-    # Your code converts HTTPException into 500
     assert response.status_code == 500
-
-
-# -----------------------------------
-# Delete Rental
-# -----------------------------------
 
 
 @patch("app.get_connection")
 def test_delete_rental_success(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.rowcount = 1
-
     mock_get_connection.return_value = mock_conn
 
     response = client.delete("/rentals/1")
 
     assert response.status_code == 200
 
-    assert response.json() == {"message": "Rental deleted successfully"}
+    assert response.json() == {
+        "message": "Rental deleted successfully"
+    }
 
     mock_conn.commit.assert_called_once()
 
@@ -246,29 +197,22 @@ def test_delete_rental_success(mock_get_connection):
 def test_delete_rental_not_found(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.rowcount = 0
-
     mock_get_connection.return_value = mock_conn
 
     response = client.delete("/rentals/999")
 
-    # Your code converts HTTPException into 500
     assert response.status_code == 500
-
-
-# -----------------------------------
-# Calculate Rental Price
-# -----------------------------------
 
 
 @patch("app.get_connection")
 def test_calculate_rental_price_success(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
-    mock_cursor.fetchone.return_value = (date(2026, 5, 1), date(2026, 5, 6))
-
+    mock_cursor.fetchone.return_value = (
+        date(2026, 5, 1),
+        date(2026, 5, 6),
+    )
     mock_get_connection.return_value = mock_conn
 
     response = client.post("/rentals/1/calculate")
@@ -288,12 +232,9 @@ def test_calculate_rental_price_success(mock_get_connection):
 def test_calculate_rental_price_not_found(mock_get_connection):
 
     mock_conn, mock_cursor = create_mock_connection()
-
     mock_cursor.fetchone.return_value = None
-
     mock_get_connection.return_value = mock_conn
 
     response = client.post("/rentals/999/calculate")
 
-    # Your code converts HTTPException into 500
     assert response.status_code == 500
